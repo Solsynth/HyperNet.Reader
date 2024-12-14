@@ -1,28 +1,13 @@
 id = "reader01"
 
-bind = "0.0.0.0:8004"
-grpc_bind = "0.0.0.0:7004"/Volumes/video/Anime/Oshi no Ko/Season 1/Oshi no Ko S01E10.ass
+bind = "0.0.0.0:8005"
+grpc_bind = "0.0.0.0:7005"
 
 nexus_addr = "localhost:7001"
-
-[workers]
-files_deletion = 4
-files_analyze = 4
 
 [debug]
 database = true
 print_routes = false
-
-[performance]
-file_chunk_size = 26214400
-
-[[destinations]]
-type = "local"
-path = "uploads"
-[[destinations]]
-type = "local"
-path = "uploads/permanent"
-access_baseurl = "http://192.168.50.133:8004"
 
 [security]
 internal_public_key = "keys/internal_public_key.pem"
