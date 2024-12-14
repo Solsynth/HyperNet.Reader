@@ -2,11 +2,12 @@ package gap
 
 import (
 	"fmt"
+	"strings"
+
 	"git.solsynth.dev/hypernet/nexus/pkg/nex"
 	"git.solsynth.dev/hypernet/nexus/pkg/proto"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
-	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -25,7 +26,7 @@ func InitializeToNexus() error {
 	var err error
 	Nx, err = nex.NewNexusConn(viper.GetString("nexus_addr"), &proto.ServiceInfo{
 		Id:       viper.GetString("id"),
-		Type:     "uc",
+		Type:     "re",
 		Label:    "Reader",
 		GrpcAddr: grpcOutbound,
 		HttpAddr: lo.ToPtr("http://" + httpOutbound + "/api"),
