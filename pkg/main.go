@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"git.solsynth.dev/hypernet/nexus/pkg/nex/sec"
 	pkg "git.solsynth.dev/hypernet/reader/pkg/internal"
 	"git.solsynth.dev/hypernet/reader/pkg/internal/gap"
 	"github.com/fatih/color"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"git.solsynth.dev/hypernet/reader/pkg/internal/cache"
 	"git.solsynth.dev/hypernet/reader/pkg/internal/database"
@@ -30,9 +31,9 @@ func init() {
 
 func main() {
 	// Booting screen
-	fmt.Println(color.YellowString(" ____                           _ _\n|  _ \\ __ _ _ __   ___ _ __ ___| (_)_ __\n| |_) / _` | '_ \\ / _ \\ '__/ __| | | '_ \\\n|  __/ (_| | |_) |  __/ | | (__| | | |_) |\n|_|   \\__,_| .__/ \\___|_|  \\___|_|_| .__/\n           |_|                     |_|"))
+	fmt.Println(color.YellowString(" ____                _\n|  _ \\ ___  __ _  __| | ___ _ __\n| |_) / _ \\/ _` |/ _` |/ _ \\ '__|\n|  _ <  __/ (_| | (_| |  __/ |\n|_| \\_\\___|\\__,_|\\__,_|\\___|_|"))
 	fmt.Printf("%s v%s\n", color.New(color.FgHiYellow).Add(color.Bold).Sprintf("Hypernet.Reader"), pkg.AppVersion)
-	fmt.Printf("The upload service in Hypernet\n")
+	fmt.Printf("The scraper in the Solar Network\n")
 	color.HiBlack("=====================================================\n")
 
 	// Configure settings
@@ -71,20 +72,9 @@ func main() {
 		log.Fatal().Err(err).Msg("An error occurred when initializing cache.")
 	}
 
-	// Set up some workers
-	for idx := 0; idx < viper.GetInt("workers.files_deletion"); idx++ {
-		go services.StartConsumeDeletionTask()
-	}
-	for idx := 0; idx < viper.GetInt("workers.files_analyze"); idx++ {
-		go services.StartConsumeAnalyzeTask()
-	}
-
 	// Configure timed tasks
 	quartz := cron.New(cron.WithLogger(cron.VerbosePrintfLogger(&log.Logger)))
 	quartz.AddFunc("@every 60m", services.DoAutoDatabaseCleanup)
-	quartz.AddFunc("@every 60m", services.RunMarkLifecycleDeletionTask)
-	quartz.AddFunc("@every 60m", services.RunMarkMultipartDeletionTask)
-	quartz.AddFunc("@midnight", services.RunScheduleDeletionTask)
 	quartz.Start()
 
 	// Server
@@ -92,10 +82,6 @@ func main() {
 
 	// Grpc Server
 	go grpc.NewGrpc().Listen()
-
-	// Post-boot actions
-	services.ScanUnanalyzedFileFromDatabase()
-	services.RunMarkLifecycleDeletionTask()
 
 	// Messages
 	quit := make(chan os.Signal, 1)
