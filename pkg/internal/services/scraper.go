@@ -12,8 +12,10 @@ import (
 	"github.com/gocolly/colly"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
-	"github.com/spf13/viper"
 )
+
+// We have to set the User-Agent to this so the sites will respond with opengraph data
+const ScrapLinkUserAgent = "FacebookExternalHit/1.1"
 
 func GetLinkMetaFromCache(target string) (models.LinkMeta, error) {
 	hash := md5.Sum([]byte(target))
@@ -39,7 +41,7 @@ func ScrapLink(target string) (*models.LinkMeta, error) {
 	}
 
 	c := colly.NewCollector(
-		colly.UserAgent(viper.GetString("scraper.user-agent")),
+		colly.UserAgent(ScrapLinkUserAgent),
 		colly.MaxDepth(3),
 	)
 
@@ -93,23 +95,23 @@ func ScrapLink(target string) (*models.LinkMeta, error) {
 	})
 
 	c.OnRequest(func(r *colly.Request) {
-		log.Debug().Str("url", target).Msg("Expanding link... requesting")
+		log.Debug().Str("url", target).Msg("Scraping link... requesting")
 	})
 	c.RedirectHandler = func(req *http.Request, via []*http.Request) error {
-		log.Debug().Str("url", req.URL.String()).Msg("Expanding link... redirecting")
+		log.Debug().Str("url", req.URL.String()).Msg("Scraping link... redirecting")
 		return nil
 	}
 
 	c.OnResponse(func(r *colly.Response) {
-		log.Debug().Str("url", target).Msg("Expanding link... analyzing")
+		log.Debug().Str("url", target).Msg("Scraping link... analyzing")
 	})
 	c.OnError(func(r *colly.Response, err error) {
-		log.Warn().Err(err).Str("url", target).Msg("Expanding link... failed")
+		log.Warn().Err(err).Str("url", target).Msg("Scraping link... failed")
 	})
 
 	c.OnScraped(func(r *colly.Response) {
 		_ = SaveLinkMetaToCache(target, *meta)
-		log.Debug().Str("url", target).Msg("Expanding link... finished")
+		log.Debug().Str("url", target).Msg("Scraping link... finished")
 	})
 
 	return meta, c.Visit(target)
