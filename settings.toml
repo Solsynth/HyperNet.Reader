@@ -1,7 +1,7 @@
 id = "reader01"
 
-bind = "0.0.0.0:8005"
-grpc_bind = "0.0.0.0:7005"
+bind = "0.0.0.0:8008"
+grpc_bind = "0.0.0.0:7008"
 
 nexus_addr = "localhost:7001"
 
