@@ -9,15 +9,23 @@ import (
 func listNewsArticles(c *fiber.Ctx) error {
 	take := c.QueryInt("take", 0)
 	offset := c.QueryInt("offset", 0)
+	source := c.Query("source")
+
+	tx := database.C
+
+	if len(source) > 0 {
+		tx = tx.Where("source = ?", source)
+	}
 
 	var count int64
-	if err := database.C.Model(&models.NewsArticle{}).Count(&count).Error; err != nil {
+	countTx := tx
+	if err := countTx.Model(&models.NewsArticle{}).Count(&count).Error; err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
 	var articles []models.NewsArticle
-	if err := database.C.Limit(take).Offset(offset).
-		Omit("Content").Order("created_at DESC").
+	if err := tx.Limit(take).Offset(offset).
+		Omit("Content").Order("COALESCE(published_at, created_at) DESC").
 		Find(&articles).Error; err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
