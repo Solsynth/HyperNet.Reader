@@ -10,6 +10,19 @@ id = "shadiao"
 label = "Shadiao Plus"
 type = "wordpress"
 source = "https://shadiao.plus/wp-json/wp/v2"
+enabled = false
+[[sources]]
+id = "cnn-politics"
+label = "CNN Politics"
+type = "scrap"
+source = "https://www.cnn.com/politics"
+enabled = false
+[[sources]]
+id = "bbc"
+label = "BBC News"
+type = "scrap"
+source = "https://www.bbc.com/news"
+enabled = true
 
 [debug]
 database = true

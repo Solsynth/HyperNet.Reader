@@ -16,7 +16,9 @@ func listNewsArticles(c *fiber.Ctx) error {
 	}
 
 	var articles []models.NewsArticle
-	if err := database.C.Limit(take).Offset(offset).Omit("Content").Find(&articles).Error; err != nil {
+	if err := database.C.Limit(take).Offset(offset).
+		Omit("Content").Order("created_at DESC").
+		Find(&articles).Error; err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 

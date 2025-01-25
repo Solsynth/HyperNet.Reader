@@ -3,8 +3,11 @@ package services
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"fmt"
 	"net"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"git.solsynth.dev/hypernet/reader/pkg/internal/database"
@@ -121,4 +124,110 @@ func ScrapLink(target string) (*models.LinkMeta, error) {
 	})
 
 	return meta, c.Visit(target)
+}
+
+const ScrapNewsDefaultUA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1.1 Safari/605.1.15"
+
+func ScrapNewsIndex(target string) []models.NewsArticle {
+	parsedTarget, err := url.Parse(target)
+	if err != nil {
+		return nil
+	}
+	baseUrl := fmt.Sprintf("%s://%s", parsedTarget.Scheme, parsedTarget.Host)
+
+	ua := viper.GetString("scraper.news_ua")
+	if len(ua) == 0 {
+		ua = ScrapNewsDefaultUA
+	}
+
+	c := colly.NewCollector(
+		colly.UserAgent(ua),
+		colly.MaxDepth(3),
+	)
+
+	c.WithTransport(&http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   60 * time.Second,
+			KeepAlive: 360 * time.Second,
+		}).DialContext,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	})
+
+	var result []models.NewsArticle
+
+	c.OnHTML("main a", func(e *colly.HTMLElement) {
+		url := e.Attr("href")
+		if strings.HasPrefix(url, "#") || strings.HasPrefix(url, "javascript:") || strings.HasPrefix(url, "mailto:") {
+			return
+		}
+		if !strings.HasPrefix(url, "http") {
+			url = fmt.Sprintf("%s%s", baseUrl, url)
+		}
+
+		article, err := ScrapNews(url)
+		if err != nil {
+			log.Warn().Err(err).Str("url", url).Msg("Failed to scrap a news article...")
+			return
+		}
+
+		log.Debug().Str("url", url).Msg("Scraped a news article...")
+		if article != nil {
+			result = append(result, *article)
+		}
+	})
+
+	c.Visit(target)
+
+	return result
+}
+
+func ScrapNews(target string) (*models.NewsArticle, error) {
+	ua := viper.GetString("scraper.news_ua")
+	if len(ua) == 0 {
+		ua = ScrapNewsDefaultUA
+	}
+
+	c := colly.NewCollector(
+		colly.UserAgent(ua),
+		colly.MaxDepth(3),
+	)
+
+	c.WithTransport(&http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   60 * time.Second,
+			KeepAlive: 360 * time.Second,
+		}).DialContext,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	})
+
+	article := &models.NewsArticle{
+		URL: target,
+	}
+
+	c.OnHTML("title", func(e *colly.HTMLElement) {
+		article.Title = e.Text
+	})
+	c.OnHTML("meta[name]", func(e *colly.HTMLElement) {
+		switch e.Attr("name") {
+		case "description":
+			article.Description = e.Attr("content")
+		}
+	})
+
+	c.OnHTML("article", func(e *colly.HTMLElement) {
+		article.Content, _ = e.DOM.Html()
+	})
+	c.OnHTML("article img", func(e *colly.HTMLElement) {
+		article.Thumbnail = e.Attr("src")
+	})
+
+	return article, c.Visit(target)
 }
