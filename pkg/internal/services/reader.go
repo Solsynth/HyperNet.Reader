@@ -135,6 +135,7 @@ func newsSourceReadFeed(src models.NewsSource) ([]models.NewsArticle, error) {
 	var result []models.NewsArticle
 	for _, item := range feed.Items {
 		parent := models.NewsArticle{
+			URL:         item.Link,
 			Title:       item.Title,
 			Description: item.Description,
 		}
