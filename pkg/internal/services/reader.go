@@ -1,11 +1,14 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	"git.solsynth.dev/hypernet/reader/pkg/internal/database"
 	"git.solsynth.dev/hypernet/reader/pkg/internal/models"
+	"github.com/mmcdole/gofeed"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/sogko/go-wordpress"
@@ -59,6 +62,8 @@ func NewsSourceRead(src models.NewsSource, eager ...bool) ([]models.NewsArticle,
 		return newsSourceReadWordpress(src, eager...)
 	case "scrap":
 		return newsSourceReadScrap(src)
+	case "feed":
+		return newsSourceReadFeed(src)
 	default:
 		return nil, fmt.Errorf("unsupported news source type: %s", src.Type)
 	}
@@ -72,6 +77,10 @@ func newsSourceReadWordpress(src models.NewsSource, eager ...bool) ([]models.New
 			Content:     post.Content.Rendered,
 			URL:         post.Link,
 			Source:      src.ID,
+		}
+		time, err := time.Parse("2006-01-02T15:04:05", post.DateGMT)
+		if err == nil {
+			article.PublishedAt = &time
 		}
 		article.GenHash()
 		return *article
@@ -104,6 +113,51 @@ func newsSourceReadWordpress(src models.NewsSource, eager ...bool) ([]models.New
 				result = append(result, wpConvert(post))
 			}
 		}
+	}
+
+	return result, nil
+}
+
+func newsSourceReadFeed(src models.NewsSource) ([]models.NewsArticle, error) {
+	pgConvert := func(article models.NewsArticle) models.NewsArticle {
+		art := &article
+		art.GenHash()
+		art.Source = src.ID
+		article = *art
+		return article
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	fp := gofeed.NewParser()
+	feed, _ := fp.ParseURLWithContext(src.Source, ctx)
+
+	var result []models.NewsArticle
+	for _, item := range feed.Items {
+		parent := models.NewsArticle{
+			Title:       item.Title,
+			Description: item.Description,
+		}
+		if item.PublishedParsed != nil {
+			parent.PublishedAt = item.PublishedParsed
+		}
+		if item.Image != nil {
+			parent.Thumbnail = item.Image.URL
+		}
+		if len(item.Content) > 0 {
+			// Good website, provide content, skip scraping of it
+			parent.Content = item.Content
+			result = append(result, pgConvert(parent))
+		} else {
+			article, err := ScrapNews(item.Link, parent)
+			if err != nil {
+				log.Warn().Err(err).Str("url", item.Link).Msg("Failed to scrap a news article...")
+				continue
+			}
+			result = append(result, pgConvert(*article))
+		}
+
+		log.Debug().Str("url", item.Link).Msg("Scraped a news article...")
 	}
 
 	return result, nil

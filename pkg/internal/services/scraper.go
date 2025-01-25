@@ -185,7 +185,7 @@ func ScrapNewsIndex(target string) []models.NewsArticle {
 	return result
 }
 
-func ScrapNews(target string) (*models.NewsArticle, error) {
+func ScrapNews(target string, parent ...models.NewsArticle) (*models.NewsArticle, error) {
 	ua := viper.GetString("scraper.news_ua")
 	if len(ua) == 0 {
 		ua = ScrapNewsDefaultUA
@@ -212,21 +212,35 @@ func ScrapNews(target string) (*models.NewsArticle, error) {
 		URL: target,
 	}
 
+	if len(parent) > 0 {
+		article.Content = parent[0].Content
+		article.Thumbnail = parent[0].Thumbnail
+		article.Description = parent[0].Description
+	}
+
 	c.OnHTML("title", func(e *colly.HTMLElement) {
-		article.Title = e.Text
+		if len(article.Title) == 0 {
+			article.Title = e.Text
+		}
 	})
 	c.OnHTML("meta[name]", func(e *colly.HTMLElement) {
 		switch e.Attr("name") {
 		case "description":
-			article.Description = e.Attr("content")
+			if len(article.Description) == 0 {
+				article.Description = e.Attr("content")
+			}
 		}
 	})
 
 	c.OnHTML("article", func(e *colly.HTMLElement) {
-		article.Content, _ = e.DOM.Html()
+		if len(article.Content) == 0 {
+			article.Content, _ = e.DOM.Html()
+		}
 	})
 	c.OnHTML("article img", func(e *colly.HTMLElement) {
-		article.Thumbnail = e.Attr("src")
+		if len(article.Thumbnail) == 0 {
+			article.Thumbnail = e.Attr("src")
+		}
 	})
 
 	return article, c.Visit(target)

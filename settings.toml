@@ -14,15 +14,15 @@ enabled = false
 [[sources]]
 id = "cnn-politics"
 label = "CNN Politics"
-type = "scrap"
-source = "https://www.cnn.com/politics"
-enabled = false
+type = "feed"
+source = "http://rss.cnn.com/rss/cnn_allpolitics.rss"
+enabled = true
 [[sources]]
 id = "bbc"
 label = "BBC News"
 type = "scrap"
 source = "https://www.bbc.com/news"
-enabled = true
+enabled = false
 
 [debug]
 database = true

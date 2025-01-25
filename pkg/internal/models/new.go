@@ -3,6 +3,7 @@ package models
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"time"
 
 	"git.solsynth.dev/hypernet/nexus/pkg/nex/cruda"
 	"github.com/google/uuid"
@@ -11,13 +12,14 @@ import (
 type NewsArticle struct {
 	cruda.BaseModel
 
-	Thumbnail   string `json:"thumbnail"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Content     string `json:"content"`
-	URL         string `json:"url"`
-	Hash        string `json:"hash" gorm:"uniqueIndex"`
-	Source      string `json:"source"`
+	Thumbnail   string     `json:"thumbnail"`
+	Title       string     `json:"title"`
+	Description string     `json:"description"`
+	Content     string     `json:"content"`
+	URL         string     `json:"url"`
+	Hash        string     `json:"hash" gorm:"uniqueIndex"`
+	Source      string     `json:"source"`
+	PublishedAt *time.Time `json:"published_at"`
 }
 
 func (v *NewsArticle) GenHash() *NewsArticle {
