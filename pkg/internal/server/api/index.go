@@ -7,6 +7,7 @@ import (
 func MapAPIs(app *fiber.App, baseURL string) {
 	api := app.Group(baseURL).Name("API")
 	{
+		api.Get("/well-known/sources", getNewsSources)
 		api.Get("/link/*", getLinkMeta)
 	}
 }

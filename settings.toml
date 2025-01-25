@@ -5,9 +5,18 @@ grpc_bind = "0.0.0.0:7008"
 
 nexus_addr = "localhost:7001"
 
+[[sources]]
+id = "shadiao"
+label = "Shadiao Plus"
+type = "wordpress"
+source = "https://shadiao.plus/wp-json/wp/v2"
+
 [debug]
 database = true
 print_routes = false
 
 [security]
 internal_public_key = "keys/internal_public_key.pem"
+
+[scraper]
+expand_ua = "facebookexternalhit/1.1"

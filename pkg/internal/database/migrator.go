@@ -7,6 +7,7 @@ import (
 
 var AutoMaintainRange = []any{
 	&models.LinkMeta{},
+	&models.NewsArticle{},
 }
 
 func RunMigration(source *gorm.DB) error {

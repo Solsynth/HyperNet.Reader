@@ -12,10 +12,11 @@ import (
 	"github.com/gocolly/colly"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+	"github.com/spf13/viper"
 )
 
 // We have to set the User-Agent to this so the sites will respond with opengraph data
-const ScrapLinkUserAgent = "facebookexternalhit/1.1"
+const ScrapLinkDefaultUA = "facebookexternalhit/1.1"
 
 func GetLinkMetaFromCache(target string) (models.LinkMeta, error) {
 	hash := md5.Sum([]byte(target))
@@ -40,8 +41,13 @@ func ScrapLink(target string) (*models.LinkMeta, error) {
 		return &cache, nil
 	}
 
+	ua := viper.GetString("scraper.expand_ua")
+	if len(ua) == 0 {
+		ua = ScrapLinkDefaultUA
+	}
+
 	c := colly.NewCollector(
-		colly.UserAgent(ScrapLinkUserAgent),
+		colly.UserAgent(ua),
 		colly.MaxDepth(3),
 	)
 
