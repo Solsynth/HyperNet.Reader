@@ -3,7 +3,7 @@ package api
 import (
 	"git.solsynth.dev/hypernet/nexus/pkg/nex/sec"
 	"git.solsynth.dev/hypernet/reader/pkg/internal/services"
-	"github.com/gofiber/fiber"
+	"github.com/gofiber/fiber/v2"
 )
 
 func adminTriggerScanTask(c *fiber.Ctx) error {
