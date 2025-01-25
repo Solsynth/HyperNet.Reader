@@ -31,7 +31,7 @@ func ScanNewsSourcesNoEager() {
 }
 
 func ScanNewsSources(eager ...bool) {
-	var results []models.NewsArticle
+	count := 0
 	for _, src := range NewsSources {
 		if !src.Enabled {
 			continue
@@ -42,18 +42,19 @@ func ScanNewsSources(eager ...bool) {
 		if err != nil {
 			log.Warn().Err(err).Str("source", src.ID).Msg("Failed to scan a news source.")
 		}
-		results = append(results, result...)
+
+		result = lo.UniqBy(result, func(item models.NewsArticle) string {
+			return item.Hash
+		})
+		database.C.Clauses(clause.OnConflict{
+			UpdateAll: true,
+		}).Create(&result)
+
 		log.Info().Str("source", src.ID).Int("count", len(result)).Msg("Scanned a news sources.")
+		count += len(result)
 	}
-	log.Info().Int("count", len(results)).Msg("Scanned all news sources.")
 
-	results = lo.UniqBy(results, func(item models.NewsArticle) string {
-		return item.Hash
-	})
-
-	database.C.Clauses(clause.OnConflict{
-		UpdateAll: true,
-	}).Create(&results)
+	log.Info().Int("count", count).Msg("Scanned all news sources.")
 }
 
 func NewsSourceRead(src models.NewsSource, eager ...bool) ([]models.NewsArticle, error) {
