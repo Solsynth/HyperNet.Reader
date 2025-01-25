@@ -145,18 +145,13 @@ func newsSourceReadFeed(src models.NewsSource) ([]models.NewsArticle, error) {
 		if item.Image != nil {
 			parent.Thumbnail = item.Image.URL
 		}
-		if len(item.Content) > 0 {
-			// Good website, provide content, skip scraping of it
-			parent.Content = item.Content
-			result = append(result, pgConvert(parent))
-		} else {
-			article, err := ScrapNews(item.Link, parent)
-			if err != nil {
-				log.Warn().Err(err).Str("url", item.Link).Msg("Failed to scrap a news article...")
-				continue
-			}
-			result = append(result, pgConvert(*article))
+
+		article, err := ScrapNews(item.Link, parent)
+		if err != nil {
+			log.Warn().Err(err).Str("url", item.Link).Msg("Failed to scrap a news article...")
+			continue
 		}
+		result = append(result, pgConvert(*article))
 
 		log.Debug().Str("url", item.Link).Msg("Scraped a news article...")
 	}
