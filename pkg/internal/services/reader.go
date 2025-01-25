@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"strconv"
 
 	"git.solsynth.dev/hypernet/reader/pkg/internal/database"
 	"git.solsynth.dev/hypernet/reader/pkg/internal/models"
@@ -20,7 +21,11 @@ func LoadNewsSources() error {
 	return nil
 }
 
-func ScanNewsSources() {
+func ScanNewsSourcesNoEager() {
+	ScanNewsSources(false)
+}
+
+func ScanNewsSources(eager ...bool) {
 	var results []models.NewsArticle
 	for _, src := range NewsSources {
 		log.Debug().Str("source", src.ID).Msg("Scanning news source...")
@@ -35,7 +40,7 @@ func ScanNewsSources() {
 	database.C.Save(&results)
 }
 
-func NewsSourceRead(src models.NewsSource) ([]models.NewsArticle, error) {
+func NewsSourceRead(src models.NewsSource, eager ...bool) ([]models.NewsArticle, error) {
 	switch src.Type {
 	case "wordpress":
 		return newsSourceReadWordpress(src)
@@ -44,18 +49,8 @@ func NewsSourceRead(src models.NewsSource) ([]models.NewsArticle, error) {
 	}
 }
 
-func newsSourceReadWordpress(src models.NewsSource) ([]models.NewsArticle, error) {
-	client := wordpress.NewClient(&wordpress.Options{
-		BaseAPIURL: src.Source,
-	})
-
-	posts, _, _, err := client.Posts().List(nil)
-	if err != nil {
-		return nil, err
-	}
-
-	var result []models.NewsArticle
-	for _, post := range posts {
+func newsSourceReadWordpress(src models.NewsSource, eager ...bool) ([]models.NewsArticle, error) {
+	wpConvert := func(post wordpress.Post) models.NewsArticle {
 		article := &models.NewsArticle{
 			Title:       post.Title.Rendered,
 			Description: post.Excerpt.Rendered,
@@ -64,7 +59,36 @@ func newsSourceReadWordpress(src models.NewsSource) ([]models.NewsArticle, error
 			Source:      src.ID,
 		}
 		article.GenHash()
-		result = append(result, *article)
+		return *article
+	}
+
+	client := wordpress.NewClient(&wordpress.Options{
+		BaseAPIURL: src.Source,
+	})
+
+	posts, resp, _, err := client.Posts().List(nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []models.NewsArticle
+	for _, post := range posts {
+		result = append(result, wpConvert(post))
+	}
+
+	if len(eager) > 0 && eager[0] {
+		totalPagesRaw := resp.Header.Get("X-WP-TotalPages")
+		totalPages, _ := strconv.Atoi(totalPagesRaw)
+		depth := min(totalPages, src.Depth)
+		for page := 2; page <= depth; page++ {
+			posts, _, _, err := client.Posts().List(nil)
+			if err != nil {
+				return result, nil
+			}
+			for _, post := range posts {
+				result = append(result, wpConvert(post))
+			}
+		}
 	}
 
 	return result, nil

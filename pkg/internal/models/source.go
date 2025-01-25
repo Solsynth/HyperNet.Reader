@@ -5,4 +5,5 @@ type NewsSource struct {
 	Label  string `json:"label"`
 	Type   string `json:"type"`
 	Source string `json:"source"`
+	Depth  int    `json:"depth"`
 }
