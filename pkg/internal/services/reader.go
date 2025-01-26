@@ -62,9 +62,9 @@ func NewsSourceRead(src models.NewsSource, eager ...bool) ([]models.NewsArticle,
 	case "wordpress":
 		return newsSourceReadWordpress(src, eager...)
 	case "scrap":
-		return newsSourceReadScrap(src)
+		return newsSourceReadScrap(src, eager...)
 	case "feed":
-		return newsSourceReadFeed(src)
+		return newsSourceReadFeed(src, eager...)
 	default:
 		return nil, fmt.Errorf("unsupported news source type: %s", src.Type)
 	}
