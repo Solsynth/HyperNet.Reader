@@ -46,7 +46,8 @@ func adminTriggerScanTask(c *fiber.Ctx) error {
 				return item.Hash
 			})
 			database.C.Clauses(clause.OnConflict{
-				UpdateAll: true,
+				Columns:   []clause.Column{{Name: "hash"}},
+				DoUpdates: clause.Assignments(map[string]interface{}{}),
 			}).Create(&result)
 
 			log.Info().Str("source", src.ID).Int("count", len(result)).Msg("Scanned a news sources.")
