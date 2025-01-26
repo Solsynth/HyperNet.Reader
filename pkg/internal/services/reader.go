@@ -49,7 +49,7 @@ func ScanNewsSources(eager ...bool) {
 		})
 		database.C.Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "hash"}},
-			DoUpdates: clause.Assignments(map[string]interface{}{}),
+			DoUpdates: clause.AssignmentColumns([]string{"thumbnail", "title", "content", "description", "published_at"}),
 		}).Create(&result)
 
 		log.Info().Str("source", src.ID).Int("count", len(result)).Msg("Scanned a news sources.")
