@@ -8,6 +8,7 @@ import (
 
 	"git.solsynth.dev/hypernet/reader/pkg/internal/database"
 	"git.solsynth.dev/hypernet/reader/pkg/internal/models"
+	"github.com/gofiber/fiber/v2"
 	"github.com/mmcdole/gofeed"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
@@ -38,7 +39,7 @@ func ScanNewsSources(eager ...bool) {
 		}
 
 		log.Debug().Str("source", src.ID).Msg("Scanning news source...")
-		result, err := NewsSourceRead(src)
+		result, err := NewsSourceRead(src, eager...)
 		if err != nil {
 			log.Warn().Err(err).Str("source", src.ID).Msg("Failed to scan a news source.")
 		}
@@ -106,7 +107,9 @@ func newsSourceReadWordpress(src models.NewsSource, eager ...bool) ([]models.New
 		totalPages, _ := strconv.Atoi(totalPagesRaw)
 		depth := min(totalPages, src.Depth)
 		for page := 2; page <= depth; page++ {
-			posts, _, _, err := client.Posts().List(nil)
+			posts, _, _, err := client.Posts().List(fiber.Map{
+				"page": page,
+			})
 			if err != nil {
 				return result, nil
 			}
