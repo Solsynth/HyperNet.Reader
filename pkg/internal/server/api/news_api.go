@@ -1,10 +1,36 @@
 package api
 
 import (
+	"time"
+
 	"git.solsynth.dev/hypernet/reader/pkg/internal/database"
 	"git.solsynth.dev/hypernet/reader/pkg/internal/models"
 	"github.com/gofiber/fiber/v2"
 )
+
+func getTodayNews(c *fiber.Ctx) error {
+	tx := database.C
+	today := time.Now().Format("2006-01-02")
+	tx = tx.Where("DATE(COALESCE(published_at, created_at)) = ?", today)
+
+	var count int64
+	countTx := tx
+	if err := countTx.Model(&models.NewsArticle{}).Count(&count).Error; err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+
+	var article models.NewsArticle
+	if err := tx.
+		Omit("Content").Order("COALESCE(published_at, created_at) DESC").
+		First(&article).Error; err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(fiber.Map{
+		"count": count,
+		"data":  article,
+	})
+}
 
 func listNewsArticles(c *fiber.Ctx) error {
 	take := c.QueryInt("take", 0)

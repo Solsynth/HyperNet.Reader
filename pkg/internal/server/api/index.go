@@ -19,6 +19,7 @@ func MapAPIs(app *fiber.App, baseURL string) {
 
 		news := api.Group("/news").Name("News")
 		{
+			news.Get("/today", getTodayNews)
 			news.Get("/", listNewsArticles)
 			news.Get("/:hash", getNewsArticle)
 		}
