@@ -128,7 +128,7 @@ func ScrapLink(target string) (*models.LinkMeta, error) {
 
 const ScrapNewsDefaultUA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1.1 Safari/605.1.15"
 
-func ScrapNewsIndex(target string) []models.NewsArticle {
+func ScrapNewsIndex(target string, maxPages ...int) []models.NewsArticle {
 	parsedTarget, err := url.Parse(target)
 	if err != nil {
 		return nil
@@ -138,6 +138,11 @@ func ScrapNewsIndex(target string) []models.NewsArticle {
 	ua := viper.GetString("scraper.news_ua")
 	if len(ua) == 0 {
 		ua = ScrapNewsDefaultUA
+	}
+
+	var limit int
+	if len(maxPages) > 0 && maxPages[0] > 0 {
+		limit = maxPages[0]
 	}
 
 	c := colly.NewCollector(
@@ -160,6 +165,10 @@ func ScrapNewsIndex(target string) []models.NewsArticle {
 	var result []models.NewsArticle
 
 	c.OnHTML("main a", func(e *colly.HTMLElement) {
+		if limit <= 0 {
+			return
+		}
+
 		url := e.Attr("href")
 		if strings.HasPrefix(url, "#") || strings.HasPrefix(url, "javascript:") || strings.HasPrefix(url, "mailto:") {
 			return
@@ -168,6 +177,7 @@ func ScrapNewsIndex(target string) []models.NewsArticle {
 			url = fmt.Sprintf("%s%s", baseUrl, url)
 		}
 
+		limit--
 		article, err := ScrapNews(url)
 		if err != nil {
 			log.Warn().Err(err).Str("url", url).Msg("Failed to scrap a news article...")

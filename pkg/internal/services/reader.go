@@ -119,7 +119,7 @@ func newsSourceReadWordpress(src models.NewsSource, eager ...bool) ([]models.New
 	return result, nil
 }
 
-func newsSourceReadFeed(src models.NewsSource) ([]models.NewsArticle, error) {
+func newsSourceReadFeed(src models.NewsSource, eager ...bool) ([]models.NewsArticle, error) {
 	pgConvert := func(article models.NewsArticle) models.NewsArticle {
 		art := &article
 		art.GenHash()
@@ -133,8 +133,15 @@ func newsSourceReadFeed(src models.NewsSource) ([]models.NewsArticle, error) {
 	fp := gofeed.NewParser()
 	feed, _ := fp.ParseURLWithContext(src.Source, ctx)
 
+	maxPages := lo.Ternary(len(eager) > 0 && eager[0], len(feed.Items), src.Depth)
+
 	var result []models.NewsArticle
 	for _, item := range feed.Items {
+		if maxPages <= 0 {
+			break
+		}
+
+		maxPages--
 		parent := models.NewsArticle{
 			URL:         item.Link,
 			Title:       item.Title,
@@ -160,7 +167,7 @@ func newsSourceReadFeed(src models.NewsSource) ([]models.NewsArticle, error) {
 	return result, nil
 }
 
-func newsSourceReadScrap(src models.NewsSource) ([]models.NewsArticle, error) {
+func newsSourceReadScrap(src models.NewsSource, eager ...bool) ([]models.NewsArticle, error) {
 	pgConvert := func(article models.NewsArticle) models.NewsArticle {
 		art := &article
 		art.GenHash()
@@ -169,7 +176,8 @@ func newsSourceReadScrap(src models.NewsSource) ([]models.NewsArticle, error) {
 		return article
 	}
 
-	result := ScrapNewsIndex(src.Source)
+	maxPages := lo.Ternary(len(eager) > 0 && eager[0], 0, src.Depth)
+	result := ScrapNewsIndex(src.Source, maxPages)
 
 	for idx, page := range result {
 		result[idx] = pgConvert(page)
