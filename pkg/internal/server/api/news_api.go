@@ -3,6 +3,7 @@ package api
 import (
 	"time"
 
+	"git.solsynth.dev/hypernet/nexus/pkg/nex/sec"
 	"git.solsynth.dev/hypernet/reader/pkg/internal/database"
 	"git.solsynth.dev/hypernet/reader/pkg/internal/models"
 	"github.com/gofiber/fiber/v2"
@@ -33,6 +34,10 @@ func getTodayNews(c *fiber.Ctx) error {
 }
 
 func listNewsArticles(c *fiber.Ctx) error {
+	if err := sec.EnsureGrantedPerm(c, "ListNews", true); err != nil {
+		return err
+	}
+
 	take := c.QueryInt("take", 0)
 	offset := c.QueryInt("offset", 0)
 	source := c.Query("source")
