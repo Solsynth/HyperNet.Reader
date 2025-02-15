@@ -1,6 +1,7 @@
 package api
 
 import (
+	"git.solsynth.dev/hypernet/reader/pkg/internal/services"
 	"time"
 
 	"git.solsynth.dev/hypernet/nexus/pkg/nex/sec"
@@ -46,6 +47,19 @@ func listNewsArticles(c *fiber.Ctx) error {
 
 	if len(source) > 0 {
 		tx = tx.Where("source = ?", source)
+	}
+
+	isAdvanced := false
+	if err := sec.EnsureGrantedPerm(c, "ListNewsAdvanced", true); err == nil {
+		isAdvanced = true
+	}
+
+	var sources []string
+	for _, srv := range services.NewsSources {
+		if !isAdvanced && srv.Advanced {
+			continue
+		}
+		sources = append(sources, srv.ID)
 	}
 
 	var count int64
