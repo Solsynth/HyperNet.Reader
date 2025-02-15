@@ -1,8 +1,9 @@
 package api
 
 import (
-	"git.solsynth.dev/hypernet/reader/pkg/internal/services"
 	"time"
+
+	"git.solsynth.dev/hypernet/reader/pkg/internal/services"
 
 	"git.solsynth.dev/hypernet/nexus/pkg/nex/sec"
 	"git.solsynth.dev/hypernet/reader/pkg/internal/database"
@@ -61,6 +62,8 @@ func listNewsArticles(c *fiber.Ctx) error {
 		}
 		sources = append(sources, srv.ID)
 	}
+
+	tx = tx.Where("source IN ?", sources)
 
 	var count int64
 	countTx := tx
