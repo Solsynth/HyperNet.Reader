@@ -3,6 +3,7 @@ package grpc
 import (
 	"net"
 
+	iproto "git.solsynth.dev/hypernet/interactive/pkg/proto"
 	"git.solsynth.dev/hypernet/nexus/pkg/proto"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
@@ -12,6 +13,7 @@ import (
 
 type Server struct {
 	proto.UnimplementedDirectoryServiceServer
+	iproto.UnimplementedFeedServiceServer
 	health.UnimplementedHealthServer
 
 	srv *grpc.Server
@@ -23,6 +25,7 @@ func NewGrpc() *Server {
 	}
 
 	proto.RegisterDirectoryServiceServer(server.srv, server)
+	iproto.RegisterFeedServiceServer(server.srv, server)
 	health.RegisterHealthServer(server.srv, server)
 
 	reflection.Register(server.srv)

@@ -14,7 +14,7 @@ func getNewsSources(c *fiber.Ctx) error {
 		isAdvanced = true
 	}
 
-	return c.JSON(lo.Filter(services.NewsSources, func(item models.NewsSource, index int) bool {
+	return c.JSON(lo.Filter(services.GetNewsSources(), func(item models.NewsSource, index int) bool {
 		if !isAdvanced && item.Advanced {
 			return false
 		}

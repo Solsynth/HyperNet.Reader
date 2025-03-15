@@ -56,7 +56,7 @@ func listNewsArticles(c *fiber.Ctx) error {
 	}
 
 	var sources []string
-	for _, srv := range services.NewsSources {
+	for _, srv := range services.GetNewsSources() {
 		if !isAdvanced && srv.Advanced {
 			continue
 		}

@@ -17,13 +17,17 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-var NewsSources []models.NewsSource
+var newsSources []models.NewsSource
+
+func GetNewsSources() []models.NewsSource {
+	return newsSources
+}
 
 func LoadNewsSources() error {
-	if err := viper.UnmarshalKey("sources", &NewsSources); err != nil {
+	if err := viper.UnmarshalKey("sources", &newsSources); err != nil {
 		return err
 	}
-	log.Info().Int("count", len(NewsSources)).Msg("Loaded news sources configuration.")
+	log.Info().Int("count", len(newsSources)).Msg("Loaded news sources configuration.")
 	return nil
 }
 
@@ -33,7 +37,7 @@ func ScanNewsSourcesNoEager() {
 
 func ScanNewsSources(eager ...bool) {
 	count := 0
-	for _, src := range NewsSources {
+	for _, src := range newsSources {
 		if !src.Enabled {
 			continue
 		}

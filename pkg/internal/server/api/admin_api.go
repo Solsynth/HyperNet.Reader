@@ -28,7 +28,7 @@ func adminTriggerScanTask(c *fiber.Ctx) error {
 
 	go func() {
 		count := 0
-		for _, src := range services.NewsSources {
+		for _, src := range services.GetNewsSources() {
 			if !src.Enabled {
 				continue
 			}
