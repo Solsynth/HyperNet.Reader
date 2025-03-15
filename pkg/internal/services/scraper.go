@@ -249,7 +249,11 @@ func ScrapNews(target string, parent ...models.NewsArticle) (*models.NewsArticle
 	})
 	c.OnHTML("article img", func(e *colly.HTMLElement) {
 		if len(article.Thumbnail) == 0 {
-			article.Thumbnail = e.Attr("src")
+			url := e.Attr("src")
+			// Usually, if the image have a relative path, it is some static assets instead of content.
+			if strings.HasPrefix(url, "http") {
+				article.Thumbnail = url
+			}
 		}
 	})
 
