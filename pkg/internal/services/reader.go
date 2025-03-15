@@ -137,7 +137,14 @@ func newsSourceReadFeed(src models.NewsSource, eager ...bool) ([]models.NewsArti
 	fp := gofeed.NewParser()
 	feed, _ := fp.ParseURLWithContext(src.Source, ctx)
 
-	maxPages := lo.Ternary(len(eager) > 0 && eager[0], len(feed.Items), src.Depth)
+	maxPages := lo.TernaryF(len(eager) > 0 && eager[0], func() int {
+		if feed.Items == nil {
+			return 0
+		}
+		return len(feed.Items)
+	}, func() int {
+		return src.Depth
+	})
 
 	var result []models.NewsArticle
 	for _, item := range feed.Items {
