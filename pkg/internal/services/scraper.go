@@ -19,7 +19,7 @@ import (
 )
 
 // We have to set the User-Agent to this so the sites will respond with opengraph data
-const ScrapLinkDefaultUA = "facebookexternalhit/1.1"
+const ScrapLinkDefaultUA = "FacebookExternalHit/1.1"
 
 func GetLinkMetaFromCache(target string) (models.LinkMeta, error) {
 	hash := md5.Sum([]byte(target))
@@ -128,7 +128,7 @@ func ScrapLink(target string) (*models.LinkMeta, error) {
 
 const ScrapNewsDefaultUA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1.1 Safari/605.1.15"
 
-func ScrapNewsIndex(target string, maxPages ...int) []models.NewsArticle {
+func ScrapSubscriptionFeed(target string, maxPages ...int) []models.SubscriptionItem {
 	parsedTarget, err := url.Parse(target)
 	if err != nil {
 		return nil
@@ -162,7 +162,7 @@ func ScrapNewsIndex(target string, maxPages ...int) []models.NewsArticle {
 		ExpectContinueTimeout: 1 * time.Second,
 	})
 
-	var result []models.NewsArticle
+	var result []models.SubscriptionItem
 
 	c.OnHTML("main a", func(e *colly.HTMLElement) {
 		if limit <= 0 {
@@ -178,7 +178,7 @@ func ScrapNewsIndex(target string, maxPages ...int) []models.NewsArticle {
 		}
 
 		limit--
-		article, err := ScrapNews(url)
+		article, err := ScrapSubscriptionItem(url)
 		if err != nil {
 			log.Warn().Err(err).Str("url", url).Msg("Failed to scrap a news article...")
 			return
@@ -190,12 +190,12 @@ func ScrapNewsIndex(target string, maxPages ...int) []models.NewsArticle {
 		}
 	})
 
-	c.Visit(target)
+	_ = c.Visit(target)
 
 	return result
 }
 
-func ScrapNews(target string, parent ...models.NewsArticle) (*models.NewsArticle, error) {
+func ScrapSubscriptionItem(target string, parent ...models.SubscriptionItem) (*models.SubscriptionItem, error) {
 	ua := viper.GetString("scraper.news_ua")
 	if len(ua) == 0 {
 		ua = ScrapNewsDefaultUA
@@ -218,7 +218,7 @@ func ScrapNews(target string, parent ...models.NewsArticle) (*models.NewsArticle
 		ExpectContinueTimeout: 1 * time.Second,
 	})
 
-	article := &models.NewsArticle{
+	article := &models.SubscriptionItem{
 		URL: target,
 	}
 

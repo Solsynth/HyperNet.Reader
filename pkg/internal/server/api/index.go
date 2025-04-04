@@ -8,8 +8,6 @@ import (
 func MapAPIs(app *fiber.App, baseURL string) {
 	api := app.Group(baseURL).Name("API")
 	{
-		api.Get("/well-known/sources", getNewsSources)
-
 		admin := api.Group("/admin").Name("Admin")
 		{
 			admin.Post("/scan", sec.ValidatorMiddleware, adminTriggerScanTask)
@@ -17,11 +15,18 @@ func MapAPIs(app *fiber.App, baseURL string) {
 
 		api.Get("/link/*", getLinkMeta)
 
-		news := api.Group("/news").Name("News")
+		subscription := api.Group("/subscriptions").Name("Subscriptions")
 		{
-			news.Get("/today", getTodayNews)
-			news.Get("/", listNewsArticles)
-			news.Get("/:hash", getNewsArticle)
+			feed := subscription.Group("/feed").Name("Feed")
+			{
+				feed.Get("/", listFeedSubscriptions)
+				feed.Get("/me", listCreatedFeedSubscriptions)
+				feed.Get("/:id", getFeedSubscription)
+				feed.Post("/", createFeedSubscription)
+				feed.Put("/:id", updateFeedSubscription)
+				feed.Post("/:id/toggle", toggleFeedSubscription)
+				feed.Delete("/:id", deleteFeedSubscription)
+			}
 		}
 	}
 }

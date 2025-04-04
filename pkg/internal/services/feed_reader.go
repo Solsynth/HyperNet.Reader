@@ -13,42 +13,38 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 	"github.com/sogko/go-wordpress"
-	"github.com/spf13/viper"
 	"gorm.io/gorm/clause"
 )
 
-var newsSources []models.NewsSource
-
-func GetNewsSources() []models.NewsSource {
-	return newsSources
+func FetchFeedTimed() {
+	FetchFeed(false)
 }
 
-func LoadNewsSources() error {
-	if err := viper.UnmarshalKey("sources", &newsSources); err != nil {
-		return err
+func FetchFeed(eager ...bool) {
+	var feeds []models.SubscriptionFeed
+	if err := database.C.Where("is_enabled = ?", true).Find(&feeds).Error; err != nil {
+		log.Warn().Err(err).Msg("An error occurred when fetching feeds.")
+		return
 	}
-	log.Info().Int("count", len(newsSources)).Msg("Loaded news sources configuration.")
-	return nil
-}
 
-func ScanNewsSourcesNoEager() {
-	ScanNewsSources(false)
-}
+	log.Info().Int("count", len(feeds)).Msg("Ready to fetch feeds...")
 
-func ScanNewsSources(eager ...bool) {
 	count := 0
-	for _, src := range newsSources {
-		if !src.Enabled {
+	var scannedFeed []uint
+	for _, src := range feeds {
+		if !src.IsEnabled {
 			continue
 		}
 
-		log.Debug().Str("source", src.ID).Msg("Scanning news source...")
-		result, err := NewsSourceRead(src, eager...)
+		log.Debug().Uint("source", src.ID).Msg("Scanning feed...")
+		result, err := SubscriptionFeedRead(src, eager...)
 		if err != nil {
-			log.Warn().Err(err).Str("source", src.ID).Msg("Failed to scan a news source.")
+			log.Warn().Err(err).Uint("source", src.ID).Msg("Failed to scan a feed.")
+		} else {
+			scannedFeed = append(scannedFeed, src.ID)
 		}
 
-		result = lo.UniqBy(result, func(item models.NewsArticle) string {
+		result = lo.UniqBy(result, func(item models.SubscriptionItem) string {
 			return item.Hash
 		})
 		database.C.Clauses(clause.OnConflict{
@@ -56,45 +52,47 @@ func ScanNewsSources(eager ...bool) {
 			DoUpdates: clause.AssignmentColumns([]string{"thumbnail", "title", "content", "description", "published_at"}),
 		}).Create(&result)
 
-		log.Info().Str("source", src.ID).Int("count", len(result)).Msg("Scanned a news sources.")
+		log.Info().Uint("source", src.ID).Int("count", len(result)).Msg("Scanned a feed.")
 		count += len(result)
 	}
 
-	log.Info().Int("count", count).Msg("Scanned all news sources.")
+	database.C.Where("id IN ?", scannedFeed).Update("last_fetched_at", time.Now())
+
+	log.Info().Int("count", count).Msg("Scanned all feeds.")
 }
 
-func NewsSourceRead(src models.NewsSource, eager ...bool) ([]models.NewsArticle, error) {
-	switch src.Type {
+func SubscriptionFeedRead(src models.SubscriptionFeed, eager ...bool) ([]models.SubscriptionItem, error) {
+	switch src.Adapter {
 	case "wordpress":
-		return newsSourceReadWordpress(src, eager...)
-	case "scrap":
-		return newsSourceReadScrap(src, eager...)
+		return feedReadWordpress(src, eager...)
+	case "webpage":
+		return feedReadWebpage(src, eager...)
 	case "feed":
-		return newsSourceReadFeed(src, eager...)
+		return feedReadGuidedFeed(src, eager...)
 	default:
-		return nil, fmt.Errorf("unsupported news source type: %s", src.Type)
+		return nil, fmt.Errorf("unsupported feed source type: %s", src.Adapter)
 	}
 }
 
-func newsSourceReadWordpress(src models.NewsSource, eager ...bool) ([]models.NewsArticle, error) {
-	wpConvert := func(post wordpress.Post) models.NewsArticle {
-		article := &models.NewsArticle{
+func feedReadWordpress(src models.SubscriptionFeed, eager ...bool) ([]models.SubscriptionItem, error) {
+	wpConvert := func(post wordpress.Post) models.SubscriptionItem {
+		article := &models.SubscriptionItem{
 			Title:       post.Title.Rendered,
 			Description: post.Excerpt.Rendered,
 			Content:     post.Content.Rendered,
 			URL:         post.Link,
-			Source:      src.ID,
+			FeedID:      src.ID,
 		}
-		time, err := time.Parse("2006-01-02T15:04:05", post.DateGMT)
+		date, err := time.Parse("2006-01-02T15:04:05", post.DateGMT)
 		if err == nil {
-			article.PublishedAt = &time
+			article.PublishedAt = date
 		}
 		article.GenHash()
 		return *article
 	}
 
 	client := wordpress.NewClient(&wordpress.Options{
-		BaseAPIURL: src.Source,
+		BaseAPIURL: src.URL,
 	})
 
 	posts, resp, _, err := client.Posts().List(nil)
@@ -102,7 +100,7 @@ func newsSourceReadWordpress(src models.NewsSource, eager ...bool) ([]models.New
 		return nil, err
 	}
 
-	var result []models.NewsArticle
+	var result []models.SubscriptionItem
 	for _, post := range posts {
 		result = append(result, wpConvert(post))
 	}
@@ -110,7 +108,7 @@ func newsSourceReadWordpress(src models.NewsSource, eager ...bool) ([]models.New
 	if len(eager) > 0 && eager[0] {
 		totalPagesRaw := resp.Header.Get("X-WP-TotalPages")
 		totalPages, _ := strconv.Atoi(totalPagesRaw)
-		depth := min(totalPages, src.Depth)
+		depth := min(totalPages, 10)
 		for page := 2; page <= depth; page++ {
 			posts, _, _, err := client.Posts().List(fiber.Map{
 				"page": page,
@@ -127,11 +125,11 @@ func newsSourceReadWordpress(src models.NewsSource, eager ...bool) ([]models.New
 	return result, nil
 }
 
-func newsSourceReadFeed(src models.NewsSource, eager ...bool) ([]models.NewsArticle, error) {
-	pgConvert := func(article models.NewsArticle) models.NewsArticle {
+func feedReadGuidedFeed(src models.SubscriptionFeed, eager ...bool) ([]models.SubscriptionItem, error) {
+	pgConvert := func(article models.SubscriptionItem) models.SubscriptionItem {
 		art := &article
 		art.GenHash()
-		art.Source = src.ID
+		art.FeedID = src.ID
 		article = *art
 		return article
 	}
@@ -139,7 +137,7 @@ func newsSourceReadFeed(src models.NewsSource, eager ...bool) ([]models.NewsArti
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	fp := gofeed.NewParser()
-	feed, _ := fp.ParseURLWithContext(src.Source, ctx)
+	feed, _ := fp.ParseURLWithContext(src.URL, ctx)
 
 	maxPages := lo.TernaryF(len(eager) > 0 && eager[0], func() int {
 		if feed.Items == nil {
@@ -147,29 +145,29 @@ func newsSourceReadFeed(src models.NewsSource, eager ...bool) ([]models.NewsArti
 		}
 		return len(feed.Items)
 	}, func() int {
-		return src.Depth
+		return 10 * 10
 	})
 
-	var result []models.NewsArticle
+	var result []models.SubscriptionItem
 	for _, item := range feed.Items {
 		if maxPages <= 0 {
 			break
 		}
 
 		maxPages--
-		parent := models.NewsArticle{
+		parent := models.SubscriptionItem{
 			URL:         item.Link,
 			Title:       item.Title,
 			Description: item.Description,
 		}
 		if item.PublishedParsed != nil {
-			parent.PublishedAt = item.PublishedParsed
+			parent.PublishedAt = *item.PublishedParsed
 		}
 		if item.Image != nil {
 			parent.Thumbnail = item.Image.URL
 		}
 
-		article, err := ScrapNews(item.Link, parent)
+		article, err := ScrapSubscriptionItem(item.Link, parent)
 		if err != nil {
 			log.Warn().Err(err).Str("url", item.Link).Msg("Failed to scrap a news article...")
 			continue
@@ -182,17 +180,17 @@ func newsSourceReadFeed(src models.NewsSource, eager ...bool) ([]models.NewsArti
 	return result, nil
 }
 
-func newsSourceReadScrap(src models.NewsSource, eager ...bool) ([]models.NewsArticle, error) {
-	pgConvert := func(article models.NewsArticle) models.NewsArticle {
+func feedReadWebpage(src models.SubscriptionFeed, eager ...bool) ([]models.SubscriptionItem, error) {
+	pgConvert := func(article models.SubscriptionItem) models.SubscriptionItem {
 		art := &article
 		art.GenHash()
-		art.Source = src.ID
+		art.FeedID = src.ID
 		article = *art
 		return article
 	}
 
-	maxPages := lo.Ternary(len(eager) > 0 && eager[0], 0, src.Depth)
-	result := ScrapNewsIndex(src.Source, maxPages)
+	maxPages := lo.Ternary(len(eager) > 0 && eager[0], 0, 10*10)
+	result := ScrapSubscriptionFeed(src.URL, maxPages)
 
 	for idx, page := range result {
 		result[idx] = pgConvert(page)

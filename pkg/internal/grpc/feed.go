@@ -14,15 +14,15 @@ import (
 
 func (v *Server) GetFeed(_ context.Context, in *iproto.GetFeedRequest) (*iproto.GetFeedResponse, error) {
 	limit := int(in.GetLimit())
-	articles, err := services.GetTodayNewsRandomly(limit, false)
+	articles, err := services.GetTodayFeedRandomly(limit)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return &iproto.GetFeedResponse{
-		Items: lo.Map(articles, func(item models.NewsArticle, _ int) *iproto.FeedItem {
+		Items: lo.Map(articles, func(item models.SubscriptionItem, _ int) *iproto.FeedItem {
 			return &iproto.FeedItem{
-				Type:      "reader.news",
+				Type:      "reader.feed",
 				Content:   nex.EncodeMap(item),
 				CreatedAt: uint64(item.CreatedAt.Unix()),
 			}
