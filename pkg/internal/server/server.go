@@ -32,6 +32,7 @@ func NewServer() *App {
 		JSONEncoder:           jsoniter.ConfigCompatibleWithStandardLibrary.Marshal,
 		JSONDecoder:           jsoniter.ConfigCompatibleWithStandardLibrary.Unmarshal,
 		BodyLimit:             512 * 1024 * 1024 * 1024, // 512 TiB
+		ReadBufferSize:        5 * 1024 * 1024,          // 5MB for large JWT
 		EnablePrintRoutes:     viper.GetBool("debug.print_routes"),
 	})
 
