@@ -183,12 +183,18 @@ func feedReadGuidedFeed(src models.SubscriptionFeed, eager ...bool) ([]models.Su
 			parent.Thumbnail = item.Image.URL
 		}
 
-		article, err := ScrapSubscriptionItem(item.Link, parent)
-		if err != nil {
-			log.Warn().Err(err).Str("url", item.Link).Msg("Failed to scrap a news article...")
-			continue
+		// When the source enabled the full content,
+		// It means the feed contains all the content, and we're not going to scrap it
+		if src.IsFullContent {
+			result = append(result, pgConvert(parent))
+		} else {
+			article, err := ScrapSubscriptionItem(item.Link, parent)
+			if err != nil {
+				log.Warn().Err(err).Str("url", item.Link).Msg("Failed to scrap a news article...")
+				continue
+			}
+			result = append(result, pgConvert(*article))
 		}
-		result = append(result, pgConvert(*article))
 
 		log.Debug().Str("url", item.Link).Msg("Scraped a news article...")
 	}

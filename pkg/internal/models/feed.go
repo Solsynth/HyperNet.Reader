@@ -12,7 +12,8 @@ type SubscriptionFeed struct {
 	cruda.BaseModel
 
 	URL           string     `json:"url"`
-	IsEnabled     bool       `json:"enabled"`
+	IsEnabled     bool       `json:"is_enabled"`
+	IsFullContent bool       `json:"is_full_content"`
 	PullInterval  int        `json:"pull_interval"`
 	Adapter       string     `json:"adapter"`
 	AccountID     *uint      `json:"account_id"`
