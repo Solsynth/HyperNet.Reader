@@ -17,7 +17,7 @@ func listFeedSubscriptions(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 	var feeds []models.SubscriptionFeed
-	if err := database.C.Take(take).Offset(offset).Find(&feeds).Error; err != nil {
+	if err := database.C.Limit(take).Offset(offset).Find(&feeds).Error; err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
