@@ -10,6 +10,7 @@ func GetTodayFeedRandomly(limit int) ([]models.SubscriptionItem, error) {
 	if err := database.C.Limit(limit).
 		Where("DATE(created_at) = CURRENT_DATE"). // Created in today
 		Order("RANDOM()").
+		Omit("Content").
 		Find(&articles).Error; err != nil {
 		return articles, err
 	}
