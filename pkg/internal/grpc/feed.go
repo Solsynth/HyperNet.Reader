@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"time"
 
 	iproto "git.solsynth.dev/hypernet/interactive/pkg/proto"
 	"git.solsynth.dev/hypernet/nexus/pkg/nex"
@@ -14,7 +15,11 @@ import (
 
 func (v *Server) GetFeed(_ context.Context, in *iproto.GetFeedRequest) (*iproto.GetFeedResponse, error) {
 	limit := int(in.GetLimit())
-	articles, err := services.GetTodayFeedRandomly(limit)
+	var cursor *time.Time
+	if in.Cursor != nil {
+		cursor = lo.ToPtr(time.UnixMilli(int64(in.GetCursor())))
+	}
+	articles, err := services.GetTodayFeedRandomly(limit, cursor)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
