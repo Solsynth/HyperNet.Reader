@@ -98,6 +98,8 @@ func feedReadWordpress(src models.SubscriptionFeed, eager ...bool) ([]models.Sub
 		date, err := time.Parse("2006-01-02T15:04:05", post.DateGMT)
 		if err == nil {
 			article.PublishedAt = date
+		} else {
+			article.PublishedAt = time.Now()
 		}
 		article.GenHash()
 		return *article
@@ -174,6 +176,8 @@ func feedReadGuidedFeed(src models.SubscriptionFeed, eager ...bool) ([]models.Su
 		}
 		if item.PublishedParsed != nil {
 			parent.PublishedAt = *item.PublishedParsed
+		} else {
+			parent.PublishedAt = time.Now()
 		}
 		if item.Image != nil {
 			parent.Thumbnail = item.Image.URL
@@ -197,6 +201,7 @@ func feedReadWebpage(src models.SubscriptionFeed, eager ...bool) ([]models.Subsc
 		art := &article
 		art.GenHash()
 		art.FeedID = src.ID
+		art.PublishedAt = time.Now()
 		article = *art
 		return article
 	}
