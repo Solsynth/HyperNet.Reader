@@ -19,6 +19,7 @@ func listFeedItem(c *fiber.Ctx) error {
 	if err := database.C.
 		Order("published_at DESC").
 		Omit("Content").
+		Preload("Feed").
 		Limit(take).Offset(offset).Find(&items).Error; err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, err.Error())
 	}
@@ -33,7 +34,7 @@ func getFeedItem(c *fiber.Ctx) error {
 	id, _ := c.ParamsInt("id", 0)
 
 	var item models.SubscriptionItem
-	if err := database.C.Where("id = ?", id).First(&item).Error; err != nil {
+	if err := database.C.Where("id = ?", id).Preload("Feed").First(&item).Error; err != nil {
 		return fiber.NewError(fiber.StatusNotFound, err.Error())
 	}
 
