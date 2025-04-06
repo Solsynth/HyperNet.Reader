@@ -17,9 +17,6 @@ func MapAPIs(app *fiber.App, baseURL string) {
 
 		subscription := api.Group("/subscriptions").Name("Subscriptions")
 		{
-			subscription.Get("/", listFeedItem)
-			subscription.Get("/:id", getFeedItem)
-
 			feed := subscription.Group("/feed").Name("Feed")
 			{
 				feed.Get("/", listFeedSubscriptions)
@@ -30,6 +27,9 @@ func MapAPIs(app *fiber.App, baseURL string) {
 				feed.Post("/:id/toggle", toggleFeedSubscription)
 				feed.Delete("/:id", deleteFeedSubscription)
 			}
+
+			subscription.Get("/", listFeedItem)
+			subscription.Get("/:id", getFeedItem)
 		}
 	}
 }
