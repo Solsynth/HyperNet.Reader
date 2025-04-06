@@ -75,7 +75,7 @@ func main() {
 	// Configure timed tasks
 	quartz := cron.New(cron.WithLogger(cron.VerbosePrintfLogger(&log.Logger)))
 	quartz.AddFunc("@every 60m", services.DoAutoDatabaseCleanup)
-	quartz.AddFunc("@midnight", services.FetchFeedTimed)
+	quartz.AddFunc("@every 60m", services.FetchFeedTimed)
 	quartz.Start()
 
 	// Server

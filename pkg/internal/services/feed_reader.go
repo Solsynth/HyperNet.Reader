@@ -22,9 +22,18 @@ func FetchFeedTimed() {
 
 func FetchFeed(eager ...bool) {
 	var feeds []models.SubscriptionFeed
-	if err := database.C.Where("is_enabled = ?", true).Find(&feeds).Error; err != nil {
-		log.Warn().Err(err).Msg("An error occurred when fetching feeds.")
-		return
+	if len(eager) > 0 && eager[0] {
+		if err := database.C.Where("is_enabled = ?", true).Find(&feeds).Error; err != nil {
+			log.Warn().Err(err).Msg("An error occurred when fetching feeds.")
+			return
+		}
+	} else {
+		if err := database.C.
+			Where("last_fetched_at IS NULL OR NOW() >= last_fetched_at + (pull_interval || ' hours')::interval").
+			Find(&feeds).Error; err != nil {
+			log.Warn().Err(err).Msg("An error occurred when fetching due feeds.")
+			return
+		}
 	}
 
 	log.Info().Int("count", len(feeds)).Msg("Ready to fetch feeds...")
@@ -56,7 +65,10 @@ func FetchFeed(eager ...bool) {
 		count += len(result)
 	}
 
-	database.C.Where("id IN ?", scannedFeed).Update("last_fetched_at", time.Now())
+	database.C.
+		Model(&models.SubscriptionFeed{}).
+		Where("id IN ?", scannedFeed).
+		Update("last_fetched_at", time.Now())
 
 	log.Info().Int("count", count).Msg("Scanned all feeds.")
 }

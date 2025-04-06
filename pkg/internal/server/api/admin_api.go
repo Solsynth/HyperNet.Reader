@@ -13,15 +13,14 @@ func adminTriggerScanTask(c *fiber.Ctx) error {
 	}
 
 	var data struct {
-		Eager   bool     `json:"eager"`
-		Sources []string `json:"sources"`
+		Eager bool `json:"eager"`
 	}
 
 	if err := exts.BindAndValidate(c, &data); err != nil {
 		return err
 	}
 
-	go services.FetchFeedTimed()
+	go services.FetchFeed(data.Eager)
 
 	return c.SendStatus(fiber.StatusOK)
 }
