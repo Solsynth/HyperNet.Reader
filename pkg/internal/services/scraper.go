@@ -19,7 +19,7 @@ import (
 )
 
 // We have to set the User-Agent to this so the sites will respond with opengraph data
-const ScrapLinkDefaultUA = "FacebookExternalHit/1.1"
+const ScrapLinkDefaultUA = "facebookexternalhit/1.1"
 
 func GetLinkMetaFromCache(target string) (models.LinkMeta, error) {
 	hash := md5.Sum([]byte(target))
